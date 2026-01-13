@@ -334,7 +334,7 @@
         up by hiding the message action icons so it can be
         utilized to show more of the topic */
         flex-grow: 0;
-        margin-left: auto;
+        margin-right: auto;
 
         .recipient-bar-control {
             display: none;
@@ -354,7 +354,7 @@
             up by hiding the message action icons so it can be
             utilized to show more of the topic */
             flex-grow: 0;
-            margin-left: auto;
+            margin-right: auto;
 
             .recipient-bar-control {
                 display: none;
@@ -365,5 +365,15 @@
                 }
             }
         }
+    }
+}
+
+.spectator-view .recipient_bar_controls .recipient-bar-control {
+    &.recipient-bar-copy-link-to-topic {
+        display: flex;
+    }
+
+    &.recipient-row-topic-menu {
+        display: none;
     }
 }

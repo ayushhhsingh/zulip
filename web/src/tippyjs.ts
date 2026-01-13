@@ -414,7 +414,7 @@ export function initialize(): void {
     });
 
     tippy.delegate("body", {
-        target: "#deactivate_account_container.disabled_setting_tooltip",
+        target: "#deactivate_account_container.disabled_setting_tooltip, .deactivate-user-container.disabled_setting_tooltip",
         content: $t({
             defaultMessage:
                 "Because you are the only organization owner, you cannot deactivate your account.",
@@ -840,7 +840,12 @@ export function initialize(): void {
 
     tippy.delegate("body", {
         target: ".folder_id-dropdown-list-container .dropdown-list-manage-folder, .new_channel_folder_id-dropdown-list-container .dropdown-list-manage-folder",
-        content: $t({defaultMessage: "Manage folder"}),
+        content(reference) {
+            if (reference.querySelector(".zulip-icon-preview")) {
+                return $t({defaultMessage: "View details"});
+            }
+            return $t({defaultMessage: "Manage folder"});
+        },
         delay: LONG_HOVER_DELAY,
         appendTo: () => document.body,
         onHidden(instance) {

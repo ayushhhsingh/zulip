@@ -20,6 +20,48 @@ format used by the Zulip server that they are interacting with.
 
 ## Changes in Zulip 12.0
 
+**Feature level 448**
+
+* [`GET /streams/{stream_id}/email_address`](/api/get-stream-email-address):
+  Users have access to a channel's email address only if they have permission
+  to post messages in the channel.
+
+**Feature level 447**
+
+* `PATCH /bots/{bot_id}`: Added `short_name` parameter to support updating bot's email.
+
+**Feature level 446**
+
+* [`GET /messages`](/api/get-messages),
+  [`GET /messages/matches_narrow`](/api/check-messages-match-narrow),
+  [`POST /messages/flags/narrow`](/api/update-message-flags-for-narrow),
+  [`POST /register`](/api/register-queue):
+  Added support for a new [search/narrow filter](/api/construct-narrow#changes),
+  `mentions`. This operator filters messages that contain a direct,
+  visible personal mention of the specified user.
+
+**Feature level 445**
+
+* [`GET /messages`](/api/get-messages): Added a new `date` value for
+   the `anchor` parameter, and new `anchor_date` parameter, to support
+   fetching messages around a specific date/time.
+
+**Feature level 444**
+
+* [`PATCH /settings`](/api/update-settings): Added support for bulk updating
+  settings for specified users or members of user groups using `target_users`
+  and `skip_if_already_edited` parameters.
+
+**Feature level 443**
+
+* [`GET /attachments`](/api/get-attachments), [`GET /events`](/api/get-events):
+  The `create_time` and `date_sent` fields in `attachment` objects will now
+  return UNIX timestamps in seconds. Previously, these values were returned in
+  milliseconds.
+* [`PATCH /messages/{message_id}`](/api/update-message): The `create_time` and
+  `date_sent` fields in `detached_uploads` object will now return UNIX timestamps
+  in seconds. Previously, these values were returned in milliseconds.
+
 **Feature level 442**
 
 * [`GET /events`](/api/get-events): `giphy_rating` is now used to denote

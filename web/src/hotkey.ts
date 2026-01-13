@@ -3,7 +3,6 @@ import assert from "minimalistic-assert";
 
 import * as activity from "./activity.ts";
 import * as activity_ui from "./activity_ui.ts";
-import * as blueslip from "./blueslip.ts";
 import * as browser_history from "./browser_history.ts";
 import * as clipboard_handler from "./clipboard_handler.ts";
 import * as color_picker_popover from "./color_picker_popover.ts";
@@ -69,6 +68,7 @@ import * as unread_ops from "./unread_ops.ts";
 import * as user_card_popover from "./user_card_popover.ts";
 import * as user_group_popover from "./user_group_popover.ts";
 import {user_settings} from "./user_settings.ts";
+import * as user_status_ui from "./user_status_ui.ts";
 import * as user_topics_ui from "./user_topics_ui.ts";
 import * as util from "./util.ts";
 
@@ -168,6 +168,7 @@ const KEYDOWN_MAPPINGS: Record<string, Hotkey | Hotkey[]> = {
         {name: "view_selected_stream", message_view_only: false},
         {name: "toggle_read_receipts", message_view_only: true},
     ],
+    "Shift+Y": {name: "set_status", message_view_only: false},
     "Shift+Tab": {name: "shift_tab", message_view_only: false},
     "Shift+ ": {name: "shift_spacebar", message_view_only: true},
     "Shift+ArrowLeft": {name: "left_arrow", message_view_only: false},
@@ -436,7 +437,7 @@ function process_escape_key(e: JQuery.KeyDownEvent): boolean {
         tenor.focus_current_edit_message();
         // Hide after setting focus so that `edit_message_id` is
         // still set in giphy.
-        tenor.hide_tenor_popover();
+        tenor.hide_picker_popover();
         return true;
     }
 
@@ -1179,6 +1180,12 @@ function process_hotkey(e: JQuery.KeyDownEvent, hotkey: Hotkey): boolean {
         case "gear_menu":
             gear_menu.toggle();
             return true;
+        case "set_status":
+            if (page_params.is_spectator) {
+                return false;
+            }
+            user_status_ui.open_user_status_modal();
+            return true;
         case "show_shortcuts": // Show keyboard shortcuts page
             browser_history.go_to_location("keyboard-shortcuts");
             return true;
@@ -1403,10 +1410,7 @@ function process_hotkey(e: JQuery.KeyDownEvent, hotkey: Hotkey): boolean {
             } else {
                 emoji_picker_reference = util.the($row.find(".message-actions-menu-button"));
             }
-
-            emoji_picker.toggle_emoji_popover(emoji_picker_reference, msg.id, {
-                placement: "bottom",
-            });
+            emoji_picker.start_picker_for_message_reaction(emoji_picker_reference, msg.id);
             return true;
         }
         case "thumbs_up_emoji": {
@@ -1490,21 +1494,16 @@ function process_hotkey(e: JQuery.KeyDownEvent, hotkey: Hotkey): boolean {
             return true;
         }
         case "vim_right": {
-            if (msg.url && !msg.locally_echoed) {
+            const url = msg.url;
+            if (url && !msg.locally_echoed) {
                 const $row = message_lists.current.selected_row();
                 const $message_time = $row.find("a.message-time");
-                void clipboard_handler
-                    .copy_link_to_clipboard(msg.url)
-                    .then(() => {
-                        show_copied_confirmation(util.the($message_time), {
-                            custom_content: $t({defaultMessage: "Message link copied!"}),
-                        });
-                    })
-                    .catch((error: unknown) => {
-                        blueslip.error("Failed to copy link to clipboard: ", {
-                            error: String(error),
-                        });
+                void (async () => {
+                    await clipboard_handler.copy_link_to_clipboard(url);
+                    show_copied_confirmation(util.the($message_time), {
+                        custom_content: $t({defaultMessage: "Message link copied!"}),
                     });
+                })();
                 return true;
             }
             return false;

@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import random
@@ -43,12 +44,17 @@ from zerver.actions.realm_settings import (
 )
 from zerver.actions.streams import do_deactivate_stream, merge_streams
 from zerver.actions.user_groups import check_add_user_group
+from zerver.actions.user_settings import do_change_avatar_fields
 from zerver.lib.realm_description import get_realm_rendered_description, get_realm_text_description
 from zerver.lib.send_email import send_future_email
 from zerver.lib.streams import create_stream_if_needed
 from zerver.lib.test_classes import ZulipTestCase
-from zerver.lib.test_helpers import activate_push_notification_service
-from zerver.lib.upload import delete_message_attachments, upload_message_attachment
+from zerver.lib.test_helpers import activate_push_notification_service, get_test_image_file
+from zerver.lib.upload import (
+    delete_message_attachments,
+    upload_avatar_image,
+    upload_message_attachment,
+)
 from zerver.models import (
     Attachment,
     CustomProfileField,
@@ -563,6 +569,97 @@ class RealmTest(ZulipTestCase):
         self.assertEqual(confirmation.content_object, obj)
         self.assertEqual(confirmation.realm, realm)
 
+    def test_realm_deactivation_demo_organization_owner_email_not_configured(self) -> None:
+        demo_name = "demo deactivate no email"
+        result = self.submit_demo_creation_form(demo_name)
+        realm = Realm.objects.filter(name=demo_name).latest("date_created")
+        self.assertEqual(result.status_code, 302)
+        self.assertTrue(
+            result["Location"].startswith(
+                f"http://{realm.string_id}.testserver/accounts/login/subdomain"
+            )
+        )
+        self.assertIsNotNone(realm.demo_organization_scheduled_deletion_date)
+
+        result = self.client_get(result["Location"], subdomain=realm.string_id)
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(result["Location"], f"http://{realm.string_id}.testserver")
+
+        demo_owner_account = realm.get_first_human_user()
+        assert demo_owner_account is not None
+        self.assert_logged_in_user_id(demo_owner_account.id)
+        self.assertEqual(demo_owner_account.delivery_email, "")
+
+        # There must be a value set for deletion_delay_days.
+        result = self.client_post("/json/realm/deactivate", subdomain=realm.subdomain)
+        self.assert_json_error(result, "Invalid data deletion time for demo organization.")
+
+        # If the owner has not configured an email, then deletion_delay_days
+        # must be set to 0, i.e., immediate data deletion as there is no way
+        # to recover the demo organization for the user.
+        result = self.client_post(
+            "/json/realm/deactivate", {"deletion_delay_days": 14}, subdomain=realm.subdomain
+        )
+        self.assert_json_error(result, "Invalid data deletion time for demo organization.")
+
+        with self.assertLogs(level="INFO"):
+            result = self.client_post(
+                "/json/realm/deactivate", {"deletion_delay_days": 0}, subdomain=realm.subdomain
+            )
+        self.assert_json_success(result)
+        self.assert_length(mail.outbox, 0)
+        self.assert_logged_in_user_id(None)
+
+    def test_realm_deactivation_demo_organization_owner_email_configured(self) -> None:
+        demo_name = "demo deactivate with email"
+        result = self.submit_demo_creation_form(demo_name)
+        realm = Realm.objects.filter(name=demo_name).latest("date_created")
+        self.assertEqual(result.status_code, 302)
+        self.assertTrue(
+            result["Location"].startswith(
+                f"http://{realm.string_id}.testserver/accounts/login/subdomain"
+            )
+        )
+        self.assertIsNotNone(realm.demo_organization_scheduled_deletion_date)
+
+        result = self.client_get(result["Location"], subdomain=realm.string_id)
+        self.assertEqual(result.status_code, 302)
+        self.assertEqual(result["Location"], f"http://{realm.string_id}.testserver")
+
+        demo_owner_account = realm.get_first_human_user()
+        assert demo_owner_account is not None
+        self.assert_logged_in_user_id(demo_owner_account.id)
+        self.assertEqual(demo_owner_account.delivery_email, "")
+
+        # Set an email for the demo organization owner's account.
+        demo_owner_account.delivery_email = "demo-owner@example.com"
+        demo_owner_account.save()
+
+        # There must be a value set for deletion_delay_days.
+        result = self.client_post("/json/realm/deactivate", subdomain=realm.subdomain)
+        self.assert_json_error(result, "Invalid data deletion time for demo organization.")
+
+        # If the owner has configured an email, then deletion_delay_days
+        # must be less than the automatic scheduled deletion date.
+        result = self.client_post(
+            "/json/realm/deactivate", {"deletion_delay_days": 90}, subdomain=realm.subdomain
+        )
+        self.assert_json_error(result, "Invalid data deletion time for demo organization.")
+
+        result = self.client_post(
+            "/json/realm/deactivate", {"deletion_delay_days": 10}, subdomain=realm.subdomain
+        )
+        self.assert_json_success(result)
+        self.assert_length(mail.outbox, 1)
+        self.assert_length(mail.outbox, 1)
+        self.assertIn(
+            f"Your Zulip organization {demo_name} has been deactivated", mail.outbox[0].subject
+        )
+        self.assertIn(
+            f"You have deactivated your Zulip demo organization, {demo_name},", mail.outbox[0].body
+        )
+        self.assert_logged_in_user_id(None)
+
     def test_do_send_realm_deactivation_email_no_acting_user(self) -> None:
         realm = get_realm("zulip")
         do_deactivate_realm(
@@ -1000,9 +1097,15 @@ class RealmTest(ZulipTestCase):
 
         # Test when language with percent_translated is
         # less than 5, correct validation error is raised.
+        mocked_language_list = [
+            {"code": "de", "locale": "de", "name": "Deutsch", "percent_translated": 97},
+            {"code": "en", "locale": "en", "name": "English"},
+            {"code": "gl", "locale": "gl", "name": "galego", "percent_translated": 1},
+        ]
         invalid_lang = "gl"
         req = dict(default_language=invalid_lang)
-        result = self.client_patch("/json/realm", req)
+        with mock.patch("zerver.lib.i18n.get_language_list", return_value=mocked_language_list):
+            result = self.client_patch("/json/realm", req)
         self.assert_json_error(result, f"Invalid language '{invalid_lang}'")
 
     def test_deactivate_realm_by_owner(self) -> None:
@@ -2880,6 +2983,19 @@ class ScrubRealmTest(ZulipTestCase):
             self.assertTrue(os.path.isfile(file_path))
             file_paths.append(file_path)
 
+        for i in range(1, 5):
+            if i == 3:
+                do_change_avatar_fields(iago, UserProfile.AVATAR_FROM_GRAVATAR, acting_user=iago)
+                continue
+            with get_test_image_file("img.png") as img_file:
+                upload_avatar_image(img_file, iago)
+                do_change_avatar_fields(iago, UserProfile.AVATAR_FROM_USER, acting_user=iago)
+        avatar_files = [
+            *glob.glob(f"{settings.LOCAL_AVATARS_DIR}/{zulip.id}/*.original"),
+            *glob.glob(f"{settings.LOCAL_AVATARS_DIR}/{zulip.id}/*.png"),
+        ]
+        self.assert_length(avatar_files, 3 * 3)  # i=(1,2,4) * (original, medium, large)
+
         CustomProfileField.objects.create(realm=lear)
 
         self.assertEqual(
@@ -2905,8 +3021,7 @@ class ScrubRealmTest(ZulipTestCase):
 
         self.assertNotEqual(CustomProfileField.objects.filter(realm=zulip).count(), 0)
 
-        with self.assertLogs(level="WARNING"):
-            do_scrub_realm(zulip, acting_user=None)
+        do_scrub_realm(zulip, acting_user=None)
 
         self.assertEqual(
             Message.objects.filter(
@@ -2938,6 +3053,9 @@ class ScrubRealmTest(ZulipTestCase):
         self.assertFalse(os.path.isfile(file_paths[2]))
         self.assertTrue(os.path.isfile(file_paths[3]))
         self.assertTrue(os.path.isfile(file_paths[4]))
+
+        for avatar_file in avatar_files:
+            self.assertFalse(os.path.isfile(avatar_file))
 
         self.assertEqual(CustomProfileField.objects.filter(realm=zulip).count(), 0)
         self.assertNotEqual(CustomProfileField.objects.filter(realm=lear).count(), 0)

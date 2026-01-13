@@ -1684,7 +1684,7 @@ paths:
                                       "name": "zulip.txt",
                                       "path_id": "2/ce/2Xpnnwgh8JWKxBXtTfD6BHKV/zulip.txt",
                                       "size": 6,
-                                      "create_time": 1594825414000,
+                                      "create_time": 1594825414,
                                       "messages": [],
                                     },
                                   "upload_space_used": 6,
@@ -1725,7 +1725,7 @@ paths:
                                       "name": "zulip.txt",
                                       "path_id": "2/ce/2Xpnnwgh8JWKxBXtTfD6BHKV/zulip.txt",
                                       "size": 6,
-                                      "create_time": 1594825414000,
+                                      "create_time": 1594825414,
                                       "messages": [],
                                     },
                                   "upload_space_used": 6,
@@ -6502,11 +6502,11 @@ paths:
                               "name": "166050.jpg",
                               "path_id": "2/ce/DfOkzwdg_IwlrN3myw3KGtiJ/166050.jpg",
                               "size": 571946,
-                              "create_time": 1588145417000,
+                              "create_time": 1588145417,
                               "messages":
                                 [
-                                  {"id": 102, "date_sent": 1588145424000},
-                                  {"id": 103, "date_sent": 1588145448000},
+                                  {"id": 102, "date_sent": 1588145424},
+                                  {"id": 103, "date_sent": 1588145448},
                                 ],
                             },
                           ],
@@ -7914,6 +7914,7 @@ paths:
                 - use_first_unread_anchor
                 - include_anchor
                 - message_ids
+                - anchor_date
       parameters:
         - name: anchor
           in: query
@@ -7926,8 +7927,13 @@ paths:
             - `oldest`: The oldest message.
             - `first_unread`: The oldest unread message matching the
               query, if any; otherwise, the most recent message.
+            - `date`: The first message on or after the datetime indicated by the
+              [`anchor_date`](#parameter-anchor_date), if any; otherwise, the most
+              recent message.
 
-            **Changes**: String values are new in Zulip 3.0 (feature level 1). The
+            **Changes**: The `date` value is new in Zulip 12.0 (feature level 445).
+
+            String values are new in Zulip 3.0 (feature level 1). The
             `first_unread` functionality was supported in Zulip 2.1.x
             and older by not sending `anchor` and using `use_first_unread_anchor`.
 
@@ -7949,6 +7955,20 @@ paths:
             type: boolean
             default: true
           example: false
+        - name: anchor_date
+          in: query
+          description: |
+            The date or datetime to use for finding the anchor message when `anchor` is
+            `date`. Accepted formats include ISO 8601 date-only strings
+            (e.g. `2005-04-18`) as well as full datetime strings
+            (e.g. `2005-04-18T12:34:56Z`). If only a date is provided, the datetime is set to
+            midnight (00:00) on that day in UTC. If no timezone is provided, UTC is
+            assumed.
+
+            **Changes**: New in Zulip 12.0 (feature level 445).
+          schema:
+            type: string
+          example: "2005-04-18T12:34:56Z"
         - name: num_before
           in: query
           description: |
@@ -9888,7 +9908,7 @@ paths:
                               "name": "1253601-1.jpg",
                               "path_id": "2/5d/BD5NRptFxPDKY3RUKwhhup8r/1253601-1.jpg",
                               "size": 1339060,
-                              "create_time": 1687984706000,
+                              "create_time": 1687984706,
                               "messages": [],
                             },
                           ],
@@ -13833,8 +13853,8 @@ paths:
                     for more details on what each type means.
 
                     - **1**: Short text
-                    - **2**: Long text
-                    - **3**: List of options
+                    - **2**: Paragraph
+                    - **3**: Dropdown
                     - **4**: Date picker
                     - **5**: Link
                     - **6**: Person picker
@@ -13846,10 +13866,10 @@ paths:
                   example: 3
                 field_data:
                   description: |
-                    Field types 3 (List of options) and 7 (External account) support storing
+                    Field types 3 (Dropdown) and 7 (External account) support storing
                     additional configuration for the field type in the `field_data` attribute.
 
-                    For field type 3 (List of options), this attribute is a JSON dictionary
+                    For field type 3 (Dropdown), this attribute is a JSON dictionary
                     defining the choices and the order they will be displayed in the
                     dropdown UI for individual users to select an option.
 
@@ -13866,7 +13886,7 @@ paths:
                     user's profile (or in a more easily accessible "small profile").
 
                     At most 2 profile fields may have this property be true in a given
-                    organization. The "Long text" [profile field types][profile-field-types]
+                    organization. The "Paragraph" [profile field types][profile-field-types]
                     profile field types cannot be selected to be displayed in profile summaries.
 
                     The "Person picker" profile field is also not supported, but that is likely to
@@ -21163,9 +21183,13 @@ paths:
       description: |
         This endpoint is used to edit the current user's settings.
 
-        **Changes**: Removed `dense_mode` setting in Zulip 10.0
-        (feature level 364) as we now have `web_font_size_px` and
-        `web_line_height_percent` settings for more control.
+        When invoked by a realm admin, it supports bulk updates to
+        settings for specified users or members of user groups using
+        the `target_users` parameter.
+
+        **Changes**: Removed `dense_mode` setting in Zulip 10.0 (feature level 364)
+        as we now have `web_font_size_px` and `web_line_height_percent`
+        settings for more control.
 
         Prior to Zulip 5.0 (feature level 80), this endpoint only
         supported the `full_name`, `email`, `old_password`, and
@@ -21212,6 +21236,42 @@ paths:
             schema:
               type: object
               properties:
+                target_users:
+                  description: |
+                    An object specifying the collection of users whose settings should be modified,
+                    for modification of other users' settings by an organization administrator.
+                    When this parameter is absent, this API endpoint always modifies the current
+                    user's own settings.
+
+                    **Changes**: New in Zulip 12.0 (feature level 444).
+                  type: object
+                  properties:
+                    user_ids:
+                      description: |
+                        A list of integer user IDs representing individual users whose settings will be updated.
+                      type: array
+                      items:
+                        type: integer
+                    group_ids:
+                      description: |
+                        A list of integer group IDs representing user groups, where settings will be applied to
+                        all active members of the specified groups.
+                      type: array
+                      items:
+                        type: integer
+                    skip_if_already_edited:
+                      description: |
+                        Whether to skip editing the settings of users who have previously edited their settings,
+                        which can be useful for adjusting a default without overriding users' own directly
+                        expressed preferences.
+                      type: boolean
+                      example: false
+                  example:
+                    {
+                      "user_ids": [6, 8],
+                      "group_ids": [24],
+                      "skip_if_already_edited": false,
+                    }
                 full_name:
                   description: |
                     A new display name for the user.
@@ -21945,6 +22005,8 @@ paths:
                   type: boolean
                   example: true
             encoding:
+              target_users:
+                contentType: application/json
               twenty_four_hour_time:
                 contentType: application/json
               web_mark_read_on_scroll_policy:
@@ -22972,7 +23034,14 @@ paths:
       description: |
         Get email address of a channel.
 
-        **Changes**: New in Zulip 8.0 (feature level 226).
+        Note that only users with permission to post messages in the channel
+        can access the channel's email address.
+
+        **Changes**: Prior to Zulip 12.0 (feature level 448), users without
+        permission to post messages in the channel could access the channel's email
+        if they had metadata access.
+
+        New in Zulip 8.0 (feature level 226).
       parameters:
         - $ref: "#/components/parameters/ChannelIdInPath"
         - name: sender_id
@@ -25144,10 +25213,12 @@ components:
         create_time:
           type: integer
           description: |
-            Time when the attachment was uploaded as a UNIX timestamp
-            multiplied by 1000 (matching the format of getTime() in JavaScript).
+            Time when the attachment was uploaded as a UNIX timestamp.
 
-            **Changes**: Changed in Zulip 3.0 (feature level 22). This field was
+            **Changes**: Before Zulip 12.0 (feature level 443), this value
+            was milliseconds since the epoch, not seconds.
+
+            Changed in Zulip 3.0 (feature level 22). This field was
             previously a floating point number.
         messages:
           type: array
@@ -25164,10 +25235,12 @@ components:
               date_sent:
                 type: integer
                 description: |
-                  Time when the message was sent as a UNIX timestamp
-                  multiplied by 1000 (matching the format of getTime() in JavaScript).
+                  Time when the message was sent as a UNIX timestamp.
 
-                  **Changes**: Changed in Zulip 3.0 (feature level 22). This
+                  **Changes**: Before Zulip 12.0 (feature level 443), this value
+                  was milliseconds since the epoch, not seconds.
+
+                  Changed in Zulip 3.0 (feature level 22). This
                   field was previously strangely called `name` and was a floating
                   point number.
               id:
@@ -25692,8 +25765,8 @@ components:
             article for details on what each type means.
 
             - **1**: Short text
-            - **2**: Long text
-            - **3**: List of options
+            - **2**: Paragraph
+            - **3**: Dropdown
             - **4**: Date picker
             - **5**: Link
             - **6**: Person picker
@@ -25718,10 +25791,10 @@ components:
         field_data:
           type: string
           description: |
-            Field types 3 (List of options) and 7 (External account) support storing
+            Field types 3 (Dropdown) and 7 (External account) support storing
             additional configuration for the field type in the `field_data` attribute.
 
-            For field type 3 (List of options), this attribute is a JSON dictionary
+            For field type 3 (Dropdown), this attribute is a JSON dictionary
             defining the choices and the order they will be displayed in the
             dropdown UI for individual users to select an option.
 
@@ -25731,7 +25804,7 @@ components:
           description: |
             Whether the custom profile field, display or not on the user card.
 
-            Currently it's value not allowed to be `true` of `Long text` and `Person picker`
+            Must be false for `Paragraph` and `Person picker`
             [profile field types](/help/custom-profile-fields#profile-field-types).
 
             This field is only included when its value is `true`.

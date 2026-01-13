@@ -79,7 +79,7 @@ class WebhookUrlOption:
         This creates a pre-configured WebhookUrlOption object to be used
         in various incoming webhook integrations.
 
-        See https://zulip.com/api/incoming-webhooks-walkthrough#webhookurloption-presets
+        See https://zulip.readthedocs.io/en/latest/webhooks/incoming-webhooks-walkthrough.html#webhookurloption-presets
         for more details on this system and what each option does.
         """
         match config:
@@ -235,9 +235,7 @@ def standardize_headers(input_headers: None | dict[str, Any]) -> dict[str, str]:
     return canonical_headers
 
 
-def validate_extract_webhook_http_header(
-    request: HttpRequest, header: str, integration_name: str
-) -> str:
+def get_event_header(request: HttpRequest, header: str, integration_name: str) -> str:
     assert request.user.is_authenticated
 
     extracted_header = request.headers.get(header)
@@ -258,7 +256,7 @@ def validate_extract_webhook_http_header(
     return extracted_header
 
 
-def get_fixture_http_headers(integration_dir_name: str, fixture_name: str) -> dict["str", "str"]:
+def call_fixture_to_headers(integration_dir_name: str, fixture_name: str) -> dict["str", "str"]:
     """For integrations that require custom HTTP headers for some (or all)
     of their test fixtures, this method will call a specially named
     function from the target integration module to determine what set
@@ -275,7 +273,7 @@ def get_fixture_http_headers(integration_dir_name: str, fixture_name: str) -> di
     return fixture_to_headers(fixture_name)
 
 
-def get_http_headers_from_filename(http_header_key: str) -> Callable[[str], dict[str, str]]:
+def default_fixture_to_headers(http_header_key: str) -> Callable[[str], dict[str, str]]:
     """If an integration requires an event type kind of HTTP header which can
     be easily (statically) determined, then name the fixtures in the format
     of "header_value__other_details" or even "header_value" and the use this

@@ -276,7 +276,7 @@ export function compare_people_for_relevance(
         //
         // (We will usually have it, since entering a channel triggers a fetch.)
         if (!peer_data.has_full_subscriber_data(current_stream_id)) {
-            void peer_data.maybe_fetch_stream_subscribers(current_stream_id);
+            void peer_data.fetch_stream_subscribers(current_stream_id);
         }
 
         // If the client does not yet have complete subscriber data,
@@ -1035,7 +1035,7 @@ export function rewire_sort_user_groups(value: typeof sort_user_groups): void {
 export function query_matches_person_name(
     query: string,
     person: UserPillData,
-    should_remove_diacritics: boolean | undefined = undefined,
+    should_remove_diacritics?: boolean,
     match_prefix?: boolean,
 ): boolean {
     query = query.toLowerCase();
@@ -1057,7 +1057,7 @@ export function query_matches_person_name(
 export function query_matches_person(
     query: string,
     person: UserPillData | UserOrMentionPillData,
-    should_remove_diacritics: boolean | undefined = undefined,
+    should_remove_diacritics?: boolean,
     match_prefix?: boolean,
 ): boolean {
     if (

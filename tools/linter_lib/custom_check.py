@@ -545,7 +545,6 @@ prose_style_rules: list["Rule"] = [
     {
         "pattern": "[oO]rganisation",  # exclude usage in hrefs/divs
         "description": "Organization is spelled with a z",
-        "exclude_line": {("docs/translating/french.md", "- organization - **organisation**")},
     },
     {"pattern": "!!! warning", "description": "!!! warning is invalid; it's spelled '!!! warn'"},
     {"pattern": "Terms of service", "description": "The S in Terms of Service is capitalized"},
@@ -708,7 +707,7 @@ html_rules: list["Rule"] = [
     {
         "pattern": "style ?=",
         "description": "Avoid using the `style=` attribute; we prefer styling in CSS files",
-        "exclude_pattern": r""".*style ?=["'](display: ?none|background: {{|color: {{|background-color: {{).*""",
+        "exclude_pattern": r""".*style ?=["'](display: ?none|background: {{|color: {{|background-color: {{).*|style=["'](narrow|long|short)["']""",
         "exclude": {
             # 5xx page doesn't have external CSS
             "web/html/5xx.html",

@@ -120,6 +120,18 @@ def check_short_name(short_name_raw: str) -> str:
     return short_name
 
 
+def validate_short_name_and_construct_bot_email(
+    short_name_raw: str, realm: Realm
+) -> tuple[str, str]:
+    short_name = check_short_name(short_name_raw)
+    short_name_for_email = short_name + "-bot"
+    try:
+        email = Address(username=short_name_for_email, domain=realm.get_bot_domain()).addr_spec
+    except ValueError:
+        raise JsonableError(_("Bad name or username"))
+    return short_name, email
+
+
 def check_valid_bot_config(
     bot_type: int, service_name: str, config_data: Mapping[str, str]
 ) -> None:
@@ -243,11 +255,13 @@ def bulk_get_cross_realm_bots() -> dict[str, UserProfile]:
 
 
 def user_ids_to_users(
-    user_ids: Sequence[int], realm: Realm, *, allow_deactivated: bool
+    user_ids: Sequence[int], realm: Realm, *, allow_deactivated: bool, allow_bots: bool
 ) -> list[UserProfile]:
     user_query = UserProfile.objects.filter(id__in=user_ids, realm=realm)
     if not allow_deactivated:
         user_query = user_query.filter(is_active=True)
+    if not allow_bots:
+        user_query = user_query.exclude(is_bot=True)
 
     user_profiles = list(user_query.select_related("realm"))
 

@@ -817,11 +817,14 @@ export function start($row: JQuery, edit_box_open_callback?: () => void): void {
     const msg_list = message_lists.current;
     void channel.get({
         url: "/json/messages/" + message.id,
-        data: {allow_empty_topic_name: true},
-        success(data) {
-            const {raw_content} = z.object({raw_content: z.string()}).parse(data);
+        data: {allow_empty_topic_name: true, apply_markdown: false},
+        success(raw_data) {
+            const data = message_store.single_message_content_schema.parse(raw_data);
+            assert(data.message.content_type === "text/x-markdown");
+
+            const message_markdown_content = data.message.content;
             if (message_lists.current === msg_list) {
-                message.raw_content = raw_content;
+                message.raw_content = message_markdown_content;
                 start_edit_with_content($row, message.raw_content, edit_box_open_callback);
             }
         },
@@ -1655,7 +1658,7 @@ export function move_topic_containing_message_to_stream(
     send_notification_to_new_thread: boolean,
     send_notification_to_old_thread: boolean,
     propagate_mode: string,
-    toast_params: ToastParams | undefined = undefined,
+    toast_params?: ToastParams,
 ): void {
     function reset_modal_ui(): void {
         currently_topic_editing_message_ids = currently_topic_editing_message_ids.filter(

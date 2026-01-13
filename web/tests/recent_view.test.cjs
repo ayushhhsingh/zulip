@@ -101,8 +101,10 @@ mock_esm("../src/compose_closed_ui", {
 mock_esm("../src/hash_util", {
     channel_url_by_user_setting: test_url,
     by_stream_topic_url: test_url,
-    by_channel_topic_permalink: test_permalink,
     by_conversation_and_time_url: test_url,
+});
+mock_esm("../src/stream_topic_history", {
+    channel_topic_permalink_hash: test_permalink,
 });
 mock_esm("../src/message_list_data", {
     MessageListData: class {},
@@ -688,20 +690,18 @@ test("test_filter_pm", ({mock_template}) => {
         is_spectator: false,
     };
 
-    const expected_user_with_icon = [
-        {name: "translated: Muted user", status_emoji_info: undefined},
+    const expected_users_with_icons = [
         {name: "Spike Spiegel", status_emoji_info: undefined},
+        {name: "translated: Muted user", status_emoji_info: undefined},
     ];
-    let i = 0;
 
     mock_template("recent_view_table.hbs", false, (data) => {
         assert.deepEqual(data, expected);
     });
 
-    mock_template("user_with_status_icon.hbs", false, (data) => {
-        assert.deepEqual(data, expected_user_with_icon[i]);
-        i += 1;
-        return "<user_with_status_icon stub>";
+    mock_template("users_with_status_icons.hbs", false, (data) => {
+        assert.deepEqual(data, {users: expected_users_with_icons});
+        return "<users_with_status_icons stub>";
     });
 
     mock_template("recent_view_row.hbs", true, (_data, html) => {

@@ -69,13 +69,12 @@ export function is_zoomed_in(): boolean {
 
 function zoom_in(): void {
     const stream_id = topic_list.active_stream_id();
+    assert(stream_id !== undefined);
 
     popovers.hide_all();
     pm_list.close();
     topic_list.zoom_in();
-    zoom_in_topics({
-        stream_id,
-    });
+    zoom_in_topics(stream_id);
 
     zoomed_in = true;
 }
@@ -653,7 +652,7 @@ function stream_id_for_elt($elt: JQuery): number {
     return Number.parseInt(stream_id_string, 10);
 }
 
-export function zoom_in_topics(options: {stream_id: number | undefined}): void {
+export function zoom_in_topics(stream_id: number): void {
     // This only does stream-related tasks related to zooming
     // in to more topics, which is basically hiding all the
     // other streams.
@@ -662,7 +661,6 @@ export function zoom_in_topics(options: {stream_id: number | undefined}): void {
 
     $("#stream_filters li.narrow-filter").each(function () {
         const $elt = $(this);
-        const stream_id = options.stream_id;
 
         if (stream_id_for_elt($elt) === stream_id) {
             $elt.toggleClass("hide", false);
@@ -1306,7 +1304,7 @@ export function on_sidebar_channel_click(
     if (stream_data.is_empty_topic_only_channel(stream_id)) {
         // If the channel doesn't support topics, take you
         // directly to general chat regardless of settings.
-        const empty_topic_url = hash_util.by_channel_topic_permalink(stream_id, "");
+        const empty_topic_url = stream_topic_history.channel_topic_permalink_hash(stream_id, "");
         browser_history.go_to_location(empty_topic_url);
         return;
     }
@@ -1514,7 +1512,7 @@ export function clear_search(): void {
     $filter.trigger("blur");
 }
 
-export let scroll_stream_into_view = function ($stream_li: JQuery | undefined = undefined): void {
+export let scroll_stream_into_view = function ($stream_li?: JQuery): void {
     if ($stream_li === undefined) {
         if (narrow_state.filter()?.terms_with_operator("topic").length === 1) {
             topic_list.left_sidebar_scroll_zoomed_in_topic_into_view();
@@ -1607,7 +1605,7 @@ export function get_sorted_channel_ids_for_next_unread_navigation(): {
     // Get sorted section ids.
     const sections = stream_list_sort.get_current_sections().map((section) => ({
         id: section.id,
-        channels: section.streams,
+        channels: [...section.streams, ...section.muted_streams, ...section.inactive_streams],
         is_collapsed: collapsed_sections.has(section.id),
     }));
 

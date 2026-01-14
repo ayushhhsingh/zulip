@@ -1705,6 +1705,27 @@ label.preferences-radio-choice-label {
         }
     }
 
+    .manage-user-avatar-block {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        margin-bottom: 16px;
+    }
+
+    .manage-user-avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .manage-user-avatar-edit-button {
+        position: absolute;
+        right: -4px;
+        bottom: -4px;
+    }
+
     #edit-user-form-error:has(.banner),
     #bot-edit-form-error:has(.banner) {
         margin-bottom: 10px;

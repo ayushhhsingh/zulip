@@ -239,9 +239,11 @@ from zerver.views.user_settings import (
     confirm_email_change,
     confirm_email_change_get,
     delete_avatar_backend,
+    delete_avatar_for_user,
     json_change_settings,
     regenerate_api_key,
     set_avatar_backend,
+    set_avatar_for_user,
 )
 from zerver.views.user_topics import update_muted_topic, update_user_topic
 from zerver.views.users import (
@@ -506,6 +508,12 @@ v1_api_and_json_patterns = [
     rest_path("user_groups/<int:user_group_id>/deactivate", POST=deactivate_user_group),
     # users/me -> zerver.views.user_settings
     rest_path("users/me/avatar", POST=set_avatar_backend, DELETE=delete_avatar_backend),
+    # users/<int:user_id>/avatar -> zerver.views.user_settings (admin can edit others' avatars)
+    rest_path(
+        "users/<int:user_id>/avatar",
+        POST=set_avatar_for_user,
+        DELETE=delete_avatar_for_user,
+    ),
     # users/me/onboarding_steps -> zerver.views.onboarding_steps
     rest_path(
         "users/me/onboarding_steps",

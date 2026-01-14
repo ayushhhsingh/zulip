@@ -8,6 +8,7 @@ import * as z from "zod/mini";
 
 import render_profile_access_error_model from "../templates/profile_access_error_modal.hbs";
 import render_admin_human_form from "../templates/settings/admin_human_form.hbs";
+import render_confirm_delete_user_avatar from "../templates/confirm_dialog/confirm_delete_user_avatar.hbs";
 import render_edit_bot_form from "../templates/settings/edit_bot_form.hbs";
 import render_settings_edit_embedded_bot_service from "../templates/settings/edit_embedded_bot_service.hbs";
 import render_settings_edit_outgoing_webhook_service from "../templates/settings/edit_outgoing_webhook_service.hbs";
@@ -31,6 +32,7 @@ import {csrf_token} from "./csrf.ts";
 import * as custom_profile_fields_ui from "./custom_profile_fields_ui.ts";
 import * as dialog_widget from "./dialog_widget.ts";
 import * as dropdown_widget from "./dropdown_widget.ts";
+import * as confirm_dialog from "./confirm_dialog.ts";
 import type {DropdownWidget, DropdownWidgetOptions} from "./dropdown_widget.ts";
 import {get_current_hash_category} from "./hash_parser.ts";
 import * as hash_util from "./hash_util.ts";
@@ -1253,6 +1255,8 @@ export function show_edit_user_info_modal(user_id: number, $container: JQuery): 
         hide_deactivate_button,
         user_is_only_organization_owner,
         max_user_name_length: people.MAX_USER_NAME_LENGTH,
+        person_avatar_url: people.medium_avatar_url_for_person(person),
+        can_manage_avatar: current_user.is_admin,
     });
 
     $container.append($(html_body));
@@ -1325,6 +1329,39 @@ export function show_edit_user_info_modal(user_id: number, $container: JQuery): 
         e.preventDefault();
         toggle_submit_button($("#edit-user-form"));
     });
+
+    if (current_user.is_admin) {
+        $("#edit-user-form").on("click", ".manage-user-avatar-edit-button", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const html_body = render_confirm_delete_user_avatar({});
+
+            function delete_user_avatar(): void {
+                const url = "/json/users/" + encodeURIComponent(user_id) + "/avatar";
+                void channel.del({
+                    url,
+                    success(data) {
+                        const parsed = z
+                            .object({avatar_url: z.string()})
+                            .safeParse(data);
+                        if (parsed.success) {
+                            $("#edit-user-form .manage-user-avatar-image").css(
+                                "background-image",
+                                `url(${CSS.escape(parsed.data.avatar_url)})`,
+                            );
+                        }
+                    },
+                });
+            }
+
+            confirm_dialog.launch({
+                html_heading: $t_html({defaultMessage: "Delete profile picture"}),
+                html_body,
+                on_click: delete_user_avatar,
+            });
+        });
+    }
 
     $("#user-profile-modal").on("click", ".dialog_submit_button", () => {
         const role = Number.parseInt(

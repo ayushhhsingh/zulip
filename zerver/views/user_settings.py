@@ -541,6 +541,8 @@ def json_change_settings(
     return json_success(request, data=result)
 
 
+@human_users_only
+@require_post
 def set_avatar_backend(request: HttpRequest, user_profile: UserProfile) -> HttpResponse:
     if len(request.FILES) != 1:
         raise JsonableError(_("You must upload exactly one avatar."))
@@ -581,6 +583,38 @@ def delete_avatar_backend(request: HttpRequest, user_profile: UserProfile) -> Ht
         avatar_url=gravatar_url,
     )
     return json_success(request, data=json_result)
+
+
+@human_users_only
+@typed_endpoint
+@require_post
+def set_avatar_for_user(
+    request: HttpRequest,
+    user_profile: UserProfile,
+    *,
+    user_id: int,
+) -> HttpResponse:
+    if not user_profile.is_realm_admin:
+        raise OrganizationAdministratorRequiredError
+
+    target = UserProfile.objects.get(id=user_id, realm=user_profile.realm)
+    return set_avatar_backend(request, target)
+
+
+@human_users_only
+@typed_endpoint
+@require_post
+def delete_avatar_for_user(
+    request: HttpRequest,
+    user_profile: UserProfile,
+    *,
+    user_id: int,
+) -> HttpResponse:
+    if not user_profile.is_realm_admin:
+        raise OrganizationAdministratorRequiredError
+
+    target = UserProfile.objects.get(id=user_id, realm=user_profile.realm)
+    return delete_avatar_backend(request, target)
 
 
 # We don't use @human_users_only here, because there are use cases for

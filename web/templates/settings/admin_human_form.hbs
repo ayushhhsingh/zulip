@@ -1,6 +1,17 @@
 <div id="edit-user-form" data-user-id="{{user_id}}">
     <form class="name-setting">
         <div id="edit-user-form-error" class="banner-wrapper"></div>
+
+        <div class="manage-user-avatar-block">
+            <div class="manage-user-avatar-image" style="background-image: url('{{ person_avatar_url }}');"></div>
+            {{#if can_manage_avatar}}
+            <button type="button"
+              class="icon-button icon-button-square icon-button-neutral manage-user-avatar-edit-button"
+              aria-label="{{t 'Delete profile picture' }}">
+                <i class="zulip-icon zulip-icon-edit" aria-hidden="true"></i>
+            </button>
+            {{/if}}
+        </div>
         <input type="hidden" name="is_full_name" value="true" />
         <div class="input-group name_change_container">
             <label for="edit_user_full_name" class="modal-field-label">{{t "Name" }}</label>

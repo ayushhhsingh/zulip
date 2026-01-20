@@ -463,8 +463,9 @@ function deactivated_create_table(deactivated_users: number[]): void {
 }
 
 export function update_user_data(
+
     user_id: number,
-    new_data: {full_name?: string; role?: number},
+    new_data: {full_name?: string; role?: number; avatar_url?: string | null},
 ): void {
     const $user_row = get_user_info_row(user_id);
 
@@ -483,6 +484,14 @@ export function update_user_data(
             $user_row.find(".user_role").text(user_type);
         }
     }
+       if (
+    new_data.avatar_url !== undefined &&
+    new_data.avatar_url !== null &&
+    new_data.avatar_url !== ""
+) {
+    $user_row.find(".pill-image").attr("src", new_data.avatar_url);
+}
+
 }
 
 export function redraw_deactivated_users_list(): void {

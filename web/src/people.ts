@@ -1739,6 +1739,7 @@ export function make_user(user_id: number, email: string, full_name: string): Us
         email,
         full_name,
         role: settings_config.user_role_values.member.code,
+        avatar_source: "S",
         is_active: true,
         is_admin: false,
         is_owner: false,

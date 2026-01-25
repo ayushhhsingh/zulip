@@ -1799,6 +1799,7 @@ run_test("fetch_users retry", async ({override, override_rewire}) => {
                     role: 1,
                     avatar_url: "",
                     avatar_version: 1,
+                    avatar_source: "S",
                     is_bot: false,
                 },
             ],
@@ -1837,6 +1838,7 @@ run_test("fetch_users", async ({override}) => {
             role: 1,
             avatar_url: "",
             avatar_version: 1,
+            avatar_source: "S",
             is_bot: false,
         },
         {
